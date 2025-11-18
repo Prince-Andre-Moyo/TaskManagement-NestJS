@@ -3,10 +3,11 @@ import { ConflictException, InternalServerErrorException } from "@nestjs/common"
 import { User } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AuthCredentialsDto } from './dto/auth-credentials.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './jwt-payload.interface';
+import { SignUpDto } from './dto/sign-up.dto';
+import { SignInDto } from './dto/sign-in.dto';
 
 @Injectable()
 export class AuthService {
@@ -16,7 +17,7 @@ export class AuthService {
         private jwtService: JwtService,
     ){}
 
-    async createUser(authCredentialsDto: AuthCredentialsDto): Promise<void> {
+    async createUser(authCredentialsDto: SignUpDto): Promise<void> {
         const { username, password } = authCredentialsDto;
 
         const salt = await bcrypt.genSalt();
@@ -40,11 +41,11 @@ export class AuthService {
         }
     }
 
-    async signUp(authCredentialsDto: AuthCredentialsDto): Promise<void>{
+    async signUp(authCredentialsDto: SignUpDto): Promise<void>{
         return this.createUser(authCredentialsDto);
     }
 
-    async signIn(authCredentialsDto: AuthCredentialsDto): Promise<{ accessToken: string }>{
+    async signIn(authCredentialsDto: SignInDto): Promise<{ accessToken: string }>{
         const { username, password } = authCredentialsDto;
         const user = await this.usersRepository.findOne({ where:{username: username} });
 
