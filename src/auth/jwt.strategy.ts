@@ -5,28 +5,32 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { JwtPayload } from "./jwt-payload.interface";
 import { User } from "./user.entity";
-import { Repository } from "typeorm";
+import { ConfigService } from "@nestjs/config";
+import { UsersRepository } from './users.repository';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy){
     constructor(
         @InjectRepository(User)
-        private userRepository: Repository<User>,
+        private readonly usersRepo: UsersRepository,
+        private readonly configService: ConfigService,
     ){
         super({
-            secretOrKey: 'topSecret51',
+            secretOrKey: configService.get<string>('JWT_SECRET')!,
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
         });
     }
 
-    async validate(payload: JwtPayload): Promise<User>{
+    async validate(payload: JwtPayload){
         const { username } = payload;
-        const user = await this.userRepository.findOne({ where: {username:username }});
+        const user = await this.usersRepo.findByUsername(username);
 
         if (!user){
             throw new UnauthorizedException();
         }
 
-        return user;
+        // req.user will have id, username, but not password
+        const { password, ...safeuser } = user as any;
+        return safeuser;
     }
 }

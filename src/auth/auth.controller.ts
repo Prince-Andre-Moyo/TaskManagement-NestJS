@@ -19,3 +19,5 @@ export class AuthController {
         return this.authService.signIn(authCredentialsDto);
     }
 }
+
+// If you ever return users, map them to a SafeUserDto (id + username, no password).

@@ -1,5 +1,8 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, RelationId } from 'typeorm';
 import { TaskStatus } from './task-status.enum';
+import { User } from 'src/auth/user.entity';
+import { Exclude } from 'class-transformer';
+
 
 @Entity()
 export class Task {
@@ -12,6 +15,17 @@ export class Task {
     @Column()
     description: string;
 
-    @Column()
+    @Column({
+        type: 'enum',
+        enum: TaskStatus,
+        default: TaskStatus.OPEN,
+    })
     status: TaskStatus;
+
+    @ManyToOne(() => User, user => user.tasks, { eager: false, onDelete: 'CASCADE' })
+    @Exclude({ toPlainOnly: true })
+    user: User;
+
+    @RelationId((task: Task) => task.user)
+    userId: string;
 }
