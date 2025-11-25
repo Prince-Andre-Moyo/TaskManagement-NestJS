@@ -13,11 +13,14 @@
     "start:debug": "cross-env STAGE=dev nest start --debug --watch",
     "start:prod": "cross-env STAGE=prod node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "cross-env STAGE=dev jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test": "cross-env STAGE=dev jest --config ./jest.config.js",
+    "test:watch": "cross-env STAGE=dev jest --config ./jest.config.js --watch",
+    "test:cov": "cross-env STAGE=dev jest --config ./jest.config.js --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand --config ./jest.config.js",
+    "test:integration": "cross-env STAGE=test jest --config ./jest-integration.json",
+    "test:integration:file": "cross-env STAGE=test jest --config ./jest-integration.json",
+    "test:e2e": "cross-env STAGE=test jest --config ./jest-e2e.json",
+    "test:all": "npm run test && npm run test:integration && npm run test:e2e"
   },
   "dependencies": {
     "@hapi/joi": "^17.1.1",
@@ -30,6 +33,7 @@
     "@nestjs/typeorm": "^11.0.0",
     "@types/passport-jwt": "^4.0.1",
     "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.4.6",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "passport": "^0.7.0",
@@ -37,6 +41,7 @@
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sqlite3": "^5.1.7",
     "typeorm": "^0.3.27"
   },
   "devDependencies": {
@@ -65,22 +70,5 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }

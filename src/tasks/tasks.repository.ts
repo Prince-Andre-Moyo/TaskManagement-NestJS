@@ -3,9 +3,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Task } from "./task.entity";
 import { GetTasksFilterDto } from "./dto/get-tasks-filter.dto";
-import { User } from "src/auth/user.entity";
+import { User } from "../auth/user.entity";
 import { CreateTaskDto } from "./dto/create-task.dto";
-import { DB_ERROR_CODES } from "src/shared/db-errors";
+import { DB_ERROR_CODES } from "../shared/db-errors";
 import { TaskStatus } from "./task-status.enum";
 
 @Injectable()
@@ -15,8 +15,10 @@ export class TasksRepository {
         private readonly repo: Repository<Task>,
     ){}
 
-    async getTasks(filterDto: GetTasksFilterDto, user: User): Promise<Task[]> {
+    async getTasks(filterDto: GetTasksFilterDto, user: User, page: number, limit: number,): Promise<[Task[], number]> {
         const { status, search } = filterDto;
+        const skip = (page - 1) * limit;
+
         const query = this.repo.createQueryBuilder('task');
         query.where('task.userId = :userId', { userId: user.id });
 
@@ -28,8 +30,11 @@ export class TasksRepository {
             query.andWhere('(task.title ILIKE :search OR task.description ILIKE :search)', {search: `%${search}%`, });
         }
 
+        query.take(limit);
+        query.skip(skip);
+
         try {
-            return await query.getMany();
+            return await query.getManyAndCount();
         } catch (error) {
             throw new InternalServerErrorException();
         }

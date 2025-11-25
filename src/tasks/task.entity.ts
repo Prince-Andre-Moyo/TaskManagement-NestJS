@@ -1,6 +1,6 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, RelationId } from 'typeorm';
 import { TaskStatus } from './task-status.enum';
-import { User } from 'src/auth/user.entity';
+import { User } from '../auth/user.entity';
 import { Exclude } from 'class-transformer';
 
 
@@ -16,7 +16,7 @@ export class Task {
     description: string;
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: TaskStatus,
         default: TaskStatus.OPEN,
     })
