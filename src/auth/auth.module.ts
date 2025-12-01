@@ -6,7 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersRepository } from './users.repository';
-import { DatabaseModule } from '../../src/database/database.module';
+import { DatabaseModule } from '../database/database.module';
 
 @Module({
   imports: [

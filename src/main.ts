@@ -30,6 +30,7 @@ async function bootstrap() {
     .setDescription('Endpoints for Authentication and Tasks')
     .setVersion('1.0')
     .addTag('Endpoints')
+    .addBearerAuth()
     .build();
 
   // For example, if you want to make sure that the library generates operation names like 

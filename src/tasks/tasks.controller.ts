@@ -8,10 +8,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../auth/get-user.decorator';
 import { User } from '../auth/user.entity';
 import { Logger } from '@nestjs/common';
-import { ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+
 
 @Controller('tasks')
 @UseGuards(AuthGuard())
+@ApiBearerAuth()
 export class TasksController {
     private logger = new Logger('TasksController');
     constructor(private tasksService: TasksService) { }

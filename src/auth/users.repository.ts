@@ -3,7 +3,7 @@ import { User } from "./user.entity";
 import { Repository } from "typeorm";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { DB_ERROR_CODES } from "../shared/db-errors";
-import { DatabaseService } from "../../src/database/database.service";
+import { DatabaseService } from "../database/database.service";
 
 @Injectable()
 export class UsersRepository {
