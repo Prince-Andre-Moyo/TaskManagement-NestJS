@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, Logger, NotFoundException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './jwt-payload.interface';
@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
+    private logger = new Logger('AuthService', { timestamp: true });
     private readonly saltRounds: number;
 
     constructor(
@@ -20,27 +21,54 @@ export class AuthService {
     }
 
     async signUp(signUpDto: SignUpDto): Promise<void> {
-        const salt = await bcrypt.genSalt(this.saltRounds);
-        const hashedPassword = await bcrypt.hash(signUpDto.password, salt);
-        await this.usersRepo.createUser({...signUpDto, hashedPassword});
+        try {
+            const salt = await bcrypt.genSalt(this.saltRounds);
+            const hashedPassword = await bcrypt.hash(signUpDto.password, salt);
+
+            await this.usersRepo.createUser({...signUpDto, hashedPassword});
+
+            this.logger.log(`Successfully signed up a new user: "${signUpDto.username}"`);
+
+        } catch (error) {
+            if (error instanceof ServiceUnavailableException) throw error;
+            if (error instanceof HttpException) throw error;
+            
+            this.logger.error(`Failed to sign up a new user: "${signUpDto.username}"`, (error as any)?.stack);
+            throw error instanceof NotFoundException ? error : new InternalServerErrorException();
+        }
+        
     }
 
     async signIn(signInDto: SignInDto): Promise<{ accessToken: string }>{
-        const { username, password } = signInDto;
-        const user = await this.usersRepo.findByUsername(username);
+        try {
+            const { username, password } = signInDto;
+            const user = await this.usersRepo.findByUsername(username);
 
-        if (!user) {
-            throw new UnauthorizedException('Please check your login credentials');
+            if (!user) {
+                throw new UnauthorizedException('Please check your login credentials');
+            }
+
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) {
+                throw new UnauthorizedException('Please check your login credentials');
+            }
+
+            const payload: JwtPayload = { username };
+            const accessToken = await this.jwtService.signAsync(payload);
+            
+            this.logger.log(`User Successfully signedIn, user: "${signInDto.username}"`);
+
+            return { accessToken };  
+            
+            
+        } catch (error) {
+            if (error instanceof ServiceUnavailableException) throw error;
+            if (error instanceof HttpException) throw error;
+            
+            this.logger.error(`Failed to signIn user: "${signInDto.username}"`, (error as any)?.stack);
+            throw error instanceof NotFoundException ? error : new InternalServerErrorException();
         }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            throw new UnauthorizedException('Please check your login credentials');
-        }
-
-        const payload: JwtPayload = { username };
-        const accessToken = await this.jwtService.signAsync(payload);
-        return { accessToken };
+        
     }
 }
 

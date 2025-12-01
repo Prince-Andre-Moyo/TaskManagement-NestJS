@@ -8,6 +8,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../auth/get-user.decorator';
 import { User } from '../auth/user.entity';
 import { Logger } from '@nestjs/common';
+import { ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @Controller('tasks')
 @UseGuards(AuthGuard())
@@ -16,6 +17,12 @@ export class TasksController {
     constructor(private tasksService: TasksService) { }
 
     @Get()
+    @ApiOperation({ summary: "Fetch a list of tasks"})
+    @ApiOkResponse({ description: "List of tasks fetched successfully." })
+    @ApiResponse({
+        status: 500,
+        description: "Internal server error.",
+    })
     getTasks(
         @Query() filterDto: GetTasksFilterDto,
         @GetUser() user: User,
@@ -25,11 +32,16 @@ export class TasksController {
     }
 
     @Get('/:id')
+    @ApiOperation({ summary: "Fetch a task by id"})
+    @ApiOkResponse({ description: "task fetched successfully." })
+    @ApiNotFoundResponse({ description: "task not found." })
     getTaskById(@Param('id') id: string, @GetUser() user: User,): Promise<Task> {
         return this.tasksService.getTaskById(id, user);
     }
 
     @Post()
+    @ApiOperation({ summary: "Create a new task"})
+    @ApiCreatedResponse({ description: "task created successfully." })
     createTask(
         @Body() createTaskDto: CreateTaskDto,
         @GetUser() user: User,
@@ -39,6 +51,11 @@ export class TasksController {
     }
 
     @Delete('/:id')
+    @ApiOperation({ summary: "Delete a task by id"})
+    @ApiResponse({
+        status: 200,
+        description: "task deleted successfully.",
+    })
     deleteTask(
         @Param('id') id: string,
         @GetUser() user: User, 
@@ -47,6 +64,11 @@ export class TasksController {
     }
 
     @Patch('/:id/status')
+    @ApiOperation({ summary: "Update a task's status"})
+    @ApiResponse({
+        status: 200,
+        description: "Task's status updated successfully.",
+    })
     updateTaskStatus(
         @Param('id') id: string, 
         @Body() updateTaskStatusDto: UpdateTaskStatusDto,

@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TasksModule } from './tasks/tasks.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { configValidationSchema } from './config.schema';
+import { DatabaseModule } from './database/database.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -13,25 +14,9 @@ import { configValidationSchema } from './config.schema';
       isGlobal: true,
     }),
     TasksModule,
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => {
-        const port = configService.get<number>('DB_PORT');
-
-        return {
-          type: 'postgres',
-          autoLoadEntities: true,
-          synchronize: configService.get<string>('STAGE') !== 'prod',
-          host: configService.get<string>('DB_HOST'),
-          port,
-          username: configService.get<string>('DB_USERNAME'),
-          password: configService.get<string>('DB_PASSWORD'),
-          database: configService.get<string>('DB_DATABASE'),
-        };
-      },
-    }),
+    DatabaseModule,
     AuthModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

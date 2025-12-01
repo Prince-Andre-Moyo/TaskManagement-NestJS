@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { TaskStatus } from './task-status.enum';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { GetTasksFilterDto } from './dto/get-tasks-filter.dto';
@@ -26,43 +26,73 @@ export class TasksService {
             const [tasks, total] = await this.tasksRepo.getTasks(filterDto, user, page, limit);
             return { data: tasks, total, page, limit };
         } catch (error) {
+            // pass through ServiceUnavailable so client sees 503
+            if (error instanceof ServiceUnavailableException) throw error;
+
             this.logger.error(`Failed to get tasks for user "${user.username}". Filters: ${JSON.stringify(filterDto)}`, error.stack,);
+
             throw new InternalServerErrorException();
         }
     }
 
     async getTaskById(id: string, user: User): Promise<Task>{
-        const found = await this.tasksRepo.findByIdAndUser(id, user);
+        try{
+            const found = await this.tasksRepo.findByIdAndUser(id, user);
 
-        if(!found){
-             throw new NotFoundException(`Task with ID "${id}" not found!`);
-         }
-         return found;
+            if(!found){
+                throw new NotFoundException(`Task with ID "${id}" not found!`);
+            }
+            return found;
+        } catch (error) {
+            if (error instanceof ServiceUnavailableException) throw error;
+
+            // if the repo threw a NotFoundException we let it bubble (but repo currently returns null)
+            this.logger.error(`Failed to fetch task ${id} for user "${user.username}"`, (error as any)?.stack);
+            throw error instanceof NotFoundException ? error : new InternalServerErrorException();
+        } 
     }
 
     async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
         try {
             return await this.tasksRepo.createTask(createTaskDto, user); 
         } catch (error) {
+            if (error instanceof ServiceUnavailableException) throw error;
+
             this.logger.error(`Failed to create task for user "${user.username}". Data: ${JSON.stringify(createTaskDto)}`, error.stack);
             throw new InternalServerErrorException();
         }
     }
 
     async deleteTask(id: string, user: User): Promise<void>{
-        const affected = await this.tasksRepo.deleteByIdAndUser(id, user);
+        try {
+            const affected = await this.tasksRepo.deleteByIdAndUser(id, user);
         
-        if(affected === 0){
-           throw new NotFoundException(`Task with ID "${id}" not found`); 
+            if(affected === 0){
+                throw new NotFoundException(`Task with ID "${id}" not found`); 
+            }  
+        } catch (error) {
+            if (error instanceof ServiceUnavailableException) throw error;
+
+            this.logger.error(`Failed to delete task ${id} for user "${user.username}"`, (error as any)?.stack);
+            throw error instanceof NotFoundException ? error : new InternalServerErrorException();
         }
+        
     }
 
     async updateTaskStatus(id: string, status: TaskStatus, user: User): Promise<Task>{
-        const task = await this.getTaskById(id, user);
-        task.status = status;
-        await this.tasksRepo.save(task);
+        try {
+            const task = await this.getTaskById(id, user);
+            task.status = status;
+            await this.tasksRepo.save(task);
 
-        this.logger.verbose(`User "${user.username}" updated task ${id} status to ${status}`);
-        return task;
+            this.logger.verbose(`User "${user.username}" updated task ${id} status to ${status}`);
+            return task;
+        } catch (error) {
+            if (error instanceof ServiceUnavailableException) throw error;
+
+            this.logger.error(`Failed to update status for task ${id} by user "${user.username}"`, (error as any)?.stack);
+            throw error instanceof NotFoundException ? error : new InternalServerErrorException();
+        }
+        
     }
 }
