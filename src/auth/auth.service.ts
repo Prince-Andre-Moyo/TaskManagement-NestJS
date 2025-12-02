@@ -6,18 +6,20 @@ import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { UsersRepository } from './users.repository';
 import { ConfigService } from '@nestjs/config';
+import { PinoLogger } from 'nestjs-pino';
 
 @Injectable()
 export class AuthService {
-    private logger = new Logger('AuthService', { timestamp: true });
     private readonly saltRounds: number;
 
     constructor(
         private usersRepo: UsersRepository,
         private jwtService: JwtService,
         private configService: ConfigService,
+        private readonly logger: PinoLogger,
     ){
         this.saltRounds = Number(this.configService.get<number>('BCRYPT_SALT_ROUNDS') ?? 10);
+        this.logger.setContext(AuthService.name);
     }
 
     async signUp(signUpDto: SignUpDto): Promise<void> {
@@ -27,7 +29,7 @@ export class AuthService {
 
             await this.usersRepo.createUser({...signUpDto, hashedPassword});
 
-            this.logger.log(`Successfully signed up a new user: "${signUpDto.username}"`);
+            this.logger.info(`Successfully signed up a new user: "${signUpDto.username}"`);
 
         } catch (error) {
             if (error instanceof ServiceUnavailableException) throw error;
@@ -56,7 +58,7 @@ export class AuthService {
             const payload: JwtPayload = { username };
             const accessToken = await this.jwtService.signAsync(payload);
             
-            this.logger.log(`User Successfully signedIn, user: "${signInDto.username}"`);
+            this.logger.info(`User Successfully signedIn, user: "${signInDto.username}"`);
 
             return { accessToken };  
             

@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: tm_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_DATABASE:-task-management}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # short and reasonable healthcheck to help debug; Compose won't wait for health by default
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      target: runner
+    image: nest-task-api:latest
+    container_name: tm_app
+    ports:
+      - "${PORT:-3000}:3000"
+    # load the env-file that contains DB_PORT/DB_USERNAME/DB_PASSWORD/JWT_SECRET etc
+    # To pick stage: run with STAGE=dev docker compose up --build
+    env_file:
+      - .env.stage.${STAGE}
+    # override DB_HOST so the app connects to the db service inside the compose network
+    environment:
+      DB_HOST: db
+    depends_on:
+      - db
+    # Your DatabaseService does retries in background, so we don't need wait-for-db script.
+    command: ["node", "dist/main.js"]
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  pgdata:

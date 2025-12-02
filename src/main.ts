@@ -1,13 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { TransformInterceptor } from './transform.interceptor';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerDocumentOptions, SwaggerModule } from '@nestjs/swagger';
+import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+
+  //const logger = new Logger('Bootstrap');
+
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  app.useLogger(app.get(Logger));
+
+  const logger = app.get(Logger);
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
@@ -49,6 +56,20 @@ async function bootstrap() {
   });
 
   await app.listen(port);
+
   logger.log(`Application listening on port ${port}`);
+
 }
-bootstrap();
+
+bootstrap().catch(err => {
+  // If app fails to start, try to log with console as fallback (logger may not be initialized)
+  // but if logger exists, use it:
+  try {
+    const fallbackLogger = (global as any).logger;
+    if (fallbackLogger?.error) {
+      fallbackLogger.error('Bootstrap failed: ' + (err?.stack || err));
+    }
+  } catch {}
+  console.error('Bootstrap failed:', err);
+  process.exit(1);
+});

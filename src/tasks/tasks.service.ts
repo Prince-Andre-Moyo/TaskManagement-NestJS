@@ -4,14 +4,18 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { GetTasksFilterDto } from './dto/get-tasks-filter.dto';
 import { Task } from './task.entity';
 import { User } from '../auth/user.entity';
-import { Logger } from '@nestjs/common';
 import { TasksRepository } from './tasks.repository';
+import { PinoLogger } from 'nestjs-pino';
 
 @Injectable()
 export class TasksService {
-    private logger = new Logger('TasksService', { timestamp: true });
 
-    constructor(private readonly tasksRepo: TasksRepository) {}
+    constructor(
+        private readonly tasksRepo: TasksRepository,
+        private readonly logger: PinoLogger,
+    ) {
+        this.logger.setContext(TasksService.name);
+    }
 
     /*
     Request page 1 with default limit: GET /tasks
@@ -85,7 +89,7 @@ export class TasksService {
             task.status = status;
             await this.tasksRepo.save(task);
 
-            this.logger.verbose(`User "${user.username}" updated task ${id} status to ${status}`);
+            this.logger.info(`User "${user.username}" updated task ${id} status to ${status}`);
             return task;
         } catch (error) {
             if (error instanceof ServiceUnavailableException) throw error;

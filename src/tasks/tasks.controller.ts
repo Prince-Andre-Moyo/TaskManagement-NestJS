@@ -7,16 +7,21 @@ import { Task } from './task.entity';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../auth/get-user.decorator';
 import { User } from '../auth/user.entity';
-import { Logger } from '@nestjs/common';
 import { ApiBearerAuth, ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { PinoLogger } from 'nestjs-pino';
 
 
 @Controller('tasks')
 @UseGuards(AuthGuard())
 @ApiBearerAuth()
 export class TasksController {
-    private logger = new Logger('TasksController');
-    constructor(private tasksService: TasksService) { }
+    //private logger = new Logger('TasksController');
+    constructor(
+        private tasksService: TasksService,
+        private readonly logger: PinoLogger,
+    ) { 
+        this.logger.setContext(TasksController.name);
+    }
 
     @Get()
     @ApiOperation({ summary: "Fetch a list of tasks"})
@@ -29,7 +34,7 @@ export class TasksController {
         @Query() filterDto: GetTasksFilterDto,
         @GetUser() user: User,
     ): Promise<{ data: Task[]; total: number; page: number; limit: number }> {
-        this.logger.verbose(`User "${user.username}" retrieving all tasks. Filters: ${JSON.stringify(filterDto,)}`,);
+        this.logger.info(`User "${user.username}" retrieving all tasks. Filters: ${JSON.stringify(filterDto,)}`,);
         return this.tasksService.getTasks(filterDto, user);
     }
 
@@ -48,7 +53,7 @@ export class TasksController {
         @Body() createTaskDto: CreateTaskDto,
         @GetUser() user: User,
     ): Promise<Task> {
-        this.logger.verbose(`User "${user.username}" creating a new tasks. Data: ${JSON.stringify(createTaskDto)}`);
+        this.logger.info(`User "${user.username}" creating a new tasks. Data: ${JSON.stringify(createTaskDto)}`);
         return this.tasksService.createTask(createTaskDto, user);
     }
 
