@@ -1,8 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { BreakerOptions, CircuitBreaker } from "../shared/circuit-breaker";
 import { clearInterval } from "timers";
 import { DataSource, ObjectLiteral, EntityTarget, Repository } from "typeorm";
+import { PinoLogger } from 'nestjs-pino';
 
 /**
  *  backgroundInitialize() runs in background and keeps trying to connect on startup and after failures.
@@ -23,7 +24,7 @@ function sleep(ms: number) {
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
-    private readonly logger = new Logger(DatabaseService.name);
+    //private readonly logger = new Logger(DatabaseService.name);
 
     private dataSource: DataSource;
     private initialized = false;
@@ -43,7 +44,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     private readonly writeBreaker: CircuitBreaker;
     private readonly breakerOpts: BreakerOptions = { failureThreshold: 5, successThreshold: 2, timeout: 2000, resetTimeout: 8000 };
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly logger: PinoLogger,
+    ) {
         // create DataSource instance but DO NOT call initialize() yet
         this.dataSource = require('./app-data-source').createAppDataSource({
             host: this.configService.get<string>('DB_HOST'),
@@ -63,11 +67,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
         this.readBreaker = new CircuitBreaker(genericExec, this.breakerOpts);
         this.writeBreaker = new CircuitBreaker(genericExec, { ...this.breakerOpts, failureThreshold: 3, timeout: 3000});
+
+        this.logger.setContext(DatabaseService.name);
     }
 
     async onModuleInit() {
         // start background initialization, do not await - app will continue to boot
-        this.logger.log('Starting background DB initializer');
+        this.logger.info('Starting background DB initializer');
         this.backgroundInitialize().catch((err) => {
             // backgroundInitialize shoudn't bubble up - we log here for visibility
             this.logger.warn('Background DB initializer error: ' + err?.message);
@@ -81,7 +87,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         if (this.pollTimer) clearInterval(this.pollTimer);
         if (this.dataSource && this.dataSource.isInitialized) {
             await this.dataSource.destroy();
-            this.logger.log('DataSource destroyed');
+            this.logger.info('DataSource destroyed');
         }
     }
 
@@ -109,7 +115,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
                 // DB OK - ensure flags are accurate
                 if (!this.initialized) {
                     this.initialized = true;
-                    this.logger.log('DB poll: recovered - marked initialized = true');
+                    this.logger.info('DB poll: recovered - marked initialized = true');
                 }
             }
         } catch (err: any) {
@@ -126,7 +132,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
                 if (this.dataSource.isInitialized) {
                     // try to gracefully close existing connection before re-init
                     await this.dataSource.destroy();
-                    this.logger.log('DataSource destroyed due to failed poll (will attempt re-initialize)');
+                    this.logger.info('DataSource destroyed due to failed poll (will attempt re-initialize)');
                 }
             } catch (destroyErr) {
                 this.logger.warn('Error destroying DataSource after failed poll: '+ (destroyErr as any)?.message);
@@ -148,10 +154,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         while (!this.initialized && !this.stopped) {
             attempts++;
             try {
-            this.logger.log(`Attempting to initialize DB (attempt ${attempts})`);
+            this.logger.info(`Attempting to initialize DB (attempt ${attempts})`);
             await this.dataSource.initialize();
             this.initialized = true;
-            this.logger.log(`Database initialized successfully on attempt ${attempts}`);
+            this.logger.info(`Database initialized successfully on attempt ${attempts}`);
             break;
             } catch (err: any) {
             // Helpful error extraction for AggregateError-like errors

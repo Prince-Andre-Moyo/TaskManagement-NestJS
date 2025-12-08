@@ -6,6 +6,9 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerDocumentOptions, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 
+// docker run -d --name task-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=taskmanagement -p 5432:5432 postgres:15
+
+
 async function bootstrap() {
 
   //const logger = new Logger('Bootstrap');
